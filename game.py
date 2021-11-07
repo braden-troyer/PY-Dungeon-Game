@@ -3,12 +3,38 @@ from pygame import display
 import random
 from threading import Timer
 import sys
+import random
 
 #Vector
 class Vector:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+windowv = Vector(736, 640)
+
+class Spritesheet(object):
+    def __init__(self, filename, sprite_height = 32, sprite_width = 32):
+        self.sheet = pygame.image.load(filename).convert()
+        self.imgRect = pygame.Rect(0, 0, sprite_width, sprite_height)
+        self.img_list = []
+        self.rows = self.sheet.get_height() // sprite_height
+        self.columns = self.sheet.get_width() // sprite_width
+
+        for i in range(self.columns):
+            self.img_list.append([])
+            for j in range(self.rows):
+                self.imgRect.x = 32 * j
+                self.img_list[i].append(self.sheet.subsurface(self.imgRect))
+            self.imgRect.y += 32
+        
+
+
+
+
+                
+
+
 
 # Define some colors
 BLACK = (0, 0, 0)
@@ -19,7 +45,7 @@ background = WHITE
  
 #Window
 pygame.init()
-size = (700, 500) # Set the width and height of the screen [width, height]
+size = (windowv.x, windowv.y) # Set the width and height of the screen [width, height]
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption("My Game")
 clock = pygame.time.Clock() # Used to manage how fast the screen updates
@@ -166,7 +192,31 @@ spawn_slime()
 
 
 
+class Background:
+    def __init__(self):
+        self.sp = Spritesheet("resources/Wall_Floor_Spritesheet.png")
+        self.bg = []
+    def newBackground(self):
+        for i in range(0, 20):
+            list = []
+            for j in range(0, 23):
+                num = random.randrange(0, 16)
+                if num < 10:
+                    list.append(self.sp.img_list[2][2])
+                elif num < 13:
+                    list.append(self.sp.img_list[1][random.randrange(0, 2)])
+                elif num < 15:
+                    list.append(self.sp.img_list[2][random.randrange(0, 2)])
+                elif num == 15:
+                    list.append(self.sp.img_list[0][random.randrange(0, 2)])            
+            self.bg.append(list)
+    def renderBackground(self):
+        for i in range(0, 20):
+            for j in range(0, 23):
+                screen.blit(self.bg[i][j], (j * 32, i * 32))
 
+bg = Background()
+bg.newBackground()
 # -------- Main Program Loop -----------
 while not done:
     # Events
@@ -180,7 +230,9 @@ while not done:
         e.update()
 
     #Drawing Entities
-    screen.fill(background)    #Background
+#    screen.fill(background)    #Background
+    bg.renderBackground()
+    
     for e in entities:  #Draw Sprites
         e.draw()
     pygame.display.flip() #Update
