@@ -79,8 +79,10 @@ class Entity():
         self.hp -= dealt_dammage
 
 #Get Mobs
-#def get_mobs():
-    #return(filter())
+def not_player(e):
+    return(e != player_entity)
+def get_mobs():
+    return(filter(not_player, entities))
 
 ##Player
 player_entity = Entity(player_img, Vector(50,50))
@@ -111,7 +113,7 @@ def updateMonster():
         player_entity.take_damage(1)
 
 monster_entity.update = updateMonster
-
+print(get_mobs())
 
 
 
