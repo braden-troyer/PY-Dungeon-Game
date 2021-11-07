@@ -1,6 +1,5 @@
 import pygame
 from pygame import display
-import move
 import random
 
 
@@ -26,14 +25,6 @@ class Spritesheet(object):
                 self.imgRect.x = 32 * j
                 self.img_list[i].append(self.sheet.subsurface(self.imgRect))
             self.imgRect.y += 32
-        
-
-
-
-
-                
-
-
 
 # Define some colors
 BLACK = (0, 0, 0)
