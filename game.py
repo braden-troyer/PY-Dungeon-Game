@@ -1,7 +1,9 @@
 import pygame
 from pygame import display
 import random
-
+from threading import Timer
+import sys
+import random
 
 #Vector
 class Vector:
@@ -48,9 +50,16 @@ done = False
 slime_img = pygame.image.load('resources/Slime_Sprite.png')
 player_img = pygame.image.load('resources/Player_Sprite.png')
 
+#Sound
+def hit_sound():
+    pygame.mixer.music.load('resources/Hit.wav')
+    pygame.mixer.music.play(1)
+
 #Handeling Events
 direction = Vector(0,0) #Input Vector
+attack = False
 def update_dir_vector(event):
+    
     if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_LEFT or event.key == ord('a'):
             direction.x -= 1
@@ -60,6 +69,10 @@ def update_dir_vector(event):
             direction.y += 1
         if event.key == pygame.K_DOWN or event.key == ord('s'):
             direction.y -= 1
+        if event.key == pygame.K_RETURN:
+            global attack
+            attack = True
+
 
     if event.type == pygame.KEYUP:
         if event.key == pygame.K_LEFT or event.key == ord('a'):
@@ -83,55 +96,91 @@ def display_number(value, position):
 #Entities
 entities = []
 class Entity():
-    def __init__(self, image, initial_vector = Vector(0,0), hp=5):
+    def __init__(self, image, initial_vector = Vector(size[0]/2,size[1]/2), stats={"speed": 3, "hp": 9}):
         entities.append(self)
         image = pygame.transform.scale(image, (70, 70))
         self.image = image
         self.x = initial_vector.x
         self.y = initial_vector.y
-        self.hp = hp
+        self.hp = stats["hp"]
+        self.speed = stats["speed"]
     def draw(self):
         screen.blit(self.image, (self.x, self.y))
         display_number(round(self.hp), (self.x, self.y))
     def take_damage(self, dealt_dammage):
+        #Take away the hp
         self.hp -= dealt_dammage
-
-#Get Mobs
-def not_player(e):
-    return(e != player_entity)
-def get_mobs():
-    return(filter(not_player, entities))
+        #Check dead
+        if(self.hp<=0):
+            entities.remove(self)
+            self.die()
+        hit_sound()
+    def move(self, vector):
+        self.x += vector.x * self.speed
+        self.y -= vector.y * self.speed
 
 ##Player
-player_entity = Entity(player_img, Vector(50,50))
+player_entity = None
+player_damage=5
+player_range =30
 def updatePlayer():
-    player_entity.x += direction.x
-    player_entity.y -= direction.y
-player_entity.update = updatePlayer
+    #Move Player
+    player_entity.move(direction)
 
+    #If the attack flag is triggered damage entities around it
+    global attack
+    if(attack):
+        attack = False
+        for e in entities:
+            if e==player_entity:
+                continue
+            if within(e,player_entity,player_range):
+                e.take_damage(3)
+
+def player_die():
+    global done
+    done=True
+
+def revive():
+    global player_entity
+    player_entity = Entity(player_img)
+    player_entity.update = updatePlayer
+    player_entity.die = player_die
+revive()
 
 ##Monsters
-monster_entity = Entity(slime_img)
-def updateMonster():
-    #get direction to player
-    dir_to_player_x = -0.5 if monster_entity.x < player_entity.x else 0.5
-    dir_to_player_y = -0.5 if monster_entity.y < player_entity.y else 0.5
+class Slime:
+    def __init__(self, initial_vector = Vector(0,0)):
+        self.monster_entity = Entity(pygame.image.load('resources/Slime_Sprite.png'), initial_vector, {"hp": 1, "speed": 0.5+random.random()})
+        self.monster_entity.update = self.updateMonster
+        self.monster_entity.die = lambda: None
+    def updateMonster(self):
+        #get direction to player
+        dir_to_player_x = 0 if abs(self.monster_entity.x - player_entity.x) < 2 else (-1 if self.monster_entity.x < player_entity.x else 1)
+        dir_to_player_y = 0 if abs(self.monster_entity.y - player_entity.y) < 2 else (-1 if self.monster_entity.y < player_entity.y else 1)
 
-    #move towards player
-    monster_entity.x -= dir_to_player_x
-    monster_entity.y -= dir_to_player_y
+        #move towards player
+        self.monster_entity.move(Vector(-dir_to_player_x, dir_to_player_y))
 
-    #if slime is within range of the player, hit the player
-    global background
-    background = WHITE
-    if within(monster_entity, player_entity, 10):
-        background = RED
-        monster_entity.x += 40*dir_to_player_x
-        monster_entity.y += 40*dir_to_player_y
-        player_entity.take_damage(1)
+        #if slime is within range of the player, hit the player
+        global background
+        background = WHITE
+        if within(self.monster_entity, player_entity, 10):
+            background = RED
+            self.monster_entity.x += 40*dir_to_player_x
+            self.monster_entity.y += 40*dir_to_player_y
+            player_entity.take_damage(1)
 
-monster_entity.update = updateMonster
-print(get_mobs())
+
+def spawn_slime():
+    vec = Vector(random.random()*size[0], random.random()*size[1])
+    if(random.random()>0.5):
+        vec.x=0
+    
+    Slime(vec)
+    t = Timer(0.5, spawn_slime)
+    t.start()
+spawn_slime()
 
 
 
@@ -167,10 +216,7 @@ while not done:
         if event.type == pygame.QUIT:
             done = True
         update_dir_vector(event)
-        
-    #handle game events
-    #move.handle_events(player_entity, direction)
-
+    
     #Updating Entities
     for e in entities:
         e.update()
@@ -185,6 +231,8 @@ while not done:
 
     # --- Limit to 60 frames per second
     clock.tick(60)
- 
+
 # Close the window and quit.
+
 pygame.quit()
+sys.exit()
